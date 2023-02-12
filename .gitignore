@@ -1,2 +1,8 @@
+# don't commit binary output files
 *.out
+*.o
+cams-download
+
+# don't commit folders
 .idea/
+docs/
