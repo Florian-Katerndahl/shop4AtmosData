@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 
 #define __USE_XOPEN
+
 #include <time.h>
 
 #include <curl/curl.h>
@@ -42,9 +43,25 @@ int main(int argc, char *argv[]) {
 
     static struct API_AUTHENTICATION api_authentication = {0};
 
-    struct CLIENT client = {0};
+    struct CLIENT client = (struct CLIENT) {
+        .auth = {0},
+        .quiet = 1,
+        .debug = 0,
+        .timeout = 0,
+        .progress = 0,
+        .full_stack = 0,
+        .delete = 0,
+        .max_retries = 10,
+        .max_sleep = 60,
+        .last_state = 0,
+        .wait_until_complete = 1,
+        .metadata = NULL,
+        .forget = 0,
+        .retries = 0,
+        .curl_handle = NULL
+    };
 
-    struct PRODUCT_REQUEST request = {0};
+    static struct PRODUCT_REQUEST request = {0};
 
     CURLcode curl;
 
@@ -59,15 +76,15 @@ int main(int argc, char *argv[]) {
     request.format = "grib";
 
     static struct option long_options[] = {
-        {"help", no_argument, NULL, 'h'},
-        {"version", no_argument, NULL, 'v'},
-        {"purpose", no_argument, NULL, 'i'},
-        {"authentication", required_argument, NULL, 'a'},
-        {"coordinates", required_argument, NULL, 'c'},
-        {"start", required_argument, NULL, '0'},
-        {"end", required_argument, NULL, '1'},
+        {"help",             no_argument,       NULL, 'h'},
+        {"version",          no_argument,       NULL, 'v'},
+        {"purpose",          no_argument,       NULL, 'i'},
+        {"authentication",   required_argument, NULL, 'a'},
+        {"coordinates",      required_argument, NULL, 'c'},
+        {"start",            required_argument, NULL, '0'},
+        {"end",              required_argument, NULL, '1'},
         {"output_directory", required_argument, NULL, 'o'},
-        {0, 0, 0, 0}
+        {0,                  0,                 0,    0}
     };
 
     // TODO why can I remove a letter from shortopts and still match the short version?
@@ -180,10 +197,7 @@ int main(int argc, char *argv[]) {
            request.bbox.north, request.bbox.east, request.bbox.south, request.bbox.west);
 
     free(longitude);
-
     free(latitude);
-
-    //abort();
 
     curl = curl_global_init(CURL_GLOBAL_DEFAULT);
 
@@ -214,10 +228,46 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    ads_retrieve(PRODUCT_CAMS_REPROCESSED, &request, "/home/florian/Desktop/cams-download.grib", &handle, &client);
+    struct PRODUCT_RESPONSE product_response = ads_request_product(PRODUCT_CAMS_REPROCESSED, &request, &handle, &client);
+
+    if (product_response.state == PRODUCT_STATUS_INVALID) {
+        fprintf(stderr, "Error: Encountered unknown product status in response to POST request\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while (product_response.state != PRODUCT_STATUS_COMPLETED && client.retries < client.max_retries) {
+        printf("Product request in preparation. Try %d/%d. Next request will be made in %d seconds.\n",
+               client.retries, client.max_retries, client.max_sleep);
+
+        if (!sleep(client.max_sleep)) {
+            fprintf(stderr, "Error: Program received a SIGNAL while sleeping. Those are currently unhandled.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        ads_check_product_state(&product_response, &request, &handle, &client);
+
+        client.retries++;
+    }
+
+    if (client.retries == client.max_retries) {
+        fprintf(stderr, "Error: Exceed maximum number of retries. Product request unsuccessful.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (!ads_download_product(&request, &handle, &client, "/home/florian/git-repos/cams/download.grib")) {
+        fprintf(stderr, "Error: Failed to download file\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // remove results
+    if (client.delete) {
+        ;
+    }
+
+    free(product_response.location);
+    free(product_response.id);
 
     curl_easy_cleanup(handle);
-
     curl_global_cleanup();
 
     free_api_authentication(&api_authentication);
