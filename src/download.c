@@ -43,6 +43,7 @@ void print_purpose(void) {
     printf("Download ECMWF CAMS data from the Atmosphere Data Store\n");
 }
 
+
 void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATION *api_authentication) {
     char line[NPOW16];
     char *separator;
@@ -295,8 +296,10 @@ ADS_STATUS check_ads_status(CURL **handle, const struct CLIENT *client) {
     curl_easy_setopt(*handle, CURLOPT_WRITEDATA, (void *) &ads_status_response);
 
     CURLcode res = curl_easy_perform(*handle);
-
     interpret_curl_result(res, 0);
+
+    // TODO some memory corruption happening? Writing further than needed/allowed?
+    ads_status_response.curl_string.string[ads_status_response.curl_string.length - 1] = '\0';
 
     root = json_loads(ads_status_response.curl_string.string, 0, &error);
 
@@ -348,20 +351,19 @@ size_t write_curl_string(char *message, size_t size, size_t nmemb, void *data_co
     return message_length;
 }
 
-void ads_retrieve(PRODUCT_TYPE product, __attribute__((unused)) const struct PRODUCT_REQUEST *request,
-                  const char *download_path,
-                  CURL **handle, const struct CLIENT *client) {
-    if (download_path == NULL) {
-        fprintf(stderr, "Error: No file path provided\n");
-        exit(EXIT_FAILURE);
-    }
+struct PRODUCT_RESPONSE
+ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct PRODUCT_REQUEST *request,
+                    CURL **handle, const struct CLIENT *client) {
 
     char *product_name;
     char url[NPOW16] = {0};
     int url_status;
 
     struct ADS_STATUS_RESPONSE ads_retrieve_response = {0};
-    json_t *root;
+    struct PRODUCT_RESPONSE request_response = {0};
+    request_response.state = PRODUCT_STATUS_INVALID;
+
+    json_t *root, *state, *request_id, *location, *content_length, __attribute__((unsused)) *content_type;
     json_error_t error;
     json_t *warning;
 
@@ -398,7 +400,10 @@ void ads_retrieve(PRODUCT_TYPE product, __attribute__((unused)) const struct PRO
     CURLcode res = curl_easy_perform(*handle);
     interpret_curl_result(res, 0);
 
-    /* Example return JSON
+    // TODO some memory corruption happening? Writing further than needed/allowed?
+    ads_retrieve_response.curl_string.string[ads_retrieve_response.curl_string.length] = '\0';
+
+    /* Example of returned JSON
      * {
      *   "state": "completed",
      *   "request_id": "a3a00819-ee46-470c-9403-bd842b20828a",
@@ -411,16 +416,72 @@ void ads_retrieve(PRODUCT_TYPE product, __attribute__((unused)) const struct PRO
      *   }
      * }
      */
-    if (!(root = json_loads(ads_status_response.curl_string.string, 0, &error))) {
+    if (!(root = json_loads(ads_retrieve_response.curl_string.string, 0, &error))) {
         fprintf(stderr, "Error: Failed to parse JSON response on line %d: %s.\n", error.line, error.text);
         exit(EXIT_FAILURE);
     }
 
+    if (!json_is_object(root)) {
+        fprintf(stderr, "Error: Returned JSON is not an object.\n");
+        goto cleanup;
+    }
 
+    state = json_object_get(root, "state");
+    if (!json_is_string(state)) {
+        fprintf(stderr, "Error: Could not get state from JSON message.\n");
+        goto cleanup;
+    }
+
+    request_id = json_object_get(root, "request_id");
+    if (!json_is_string(request_id)) {
+        fprintf(stderr, "Error: Could not get request_id from JSON message.\n");
+        goto cleanup;
+    }
+
+    location = json_object_get(root, "location");
+    if (!json_is_string(location)) {
+        fprintf(stderr, "Error: Could not get file location from JSON message.\n");
+        goto cleanup;
+    }
+
+    content_length = json_object_get(root, "content_length");
+    if (!json_is_integer(content_length)) {
+        fprintf(stderr, "Error: Could not get content length from JSON message.\n");
+        goto cleanup;
+    }
+/*
+    content_type = json_object_get(root, "content_type");
+    if (!json_is_string(content_type)) {
+        fprintf(stderr, "Error: Could not get content_type from JSON message.\n");
+        goto cleanup;
+    }
+*/
+
+    request_response.state = convert_to_product_status(json_string_value(state));
+    // TODO check result of malloc and strcpy!!!
+    // TODO is +1 needed? IDK
+    request_response.id = calloc(json_string_length(request_id) + 1, sizeof(char));
+    strcpy(request_response.id, json_string_value(request_id));
+    request_response.location = calloc(json_string_length(location) + 1, sizeof(char));
+    strcpy(request_response.location, json_string_value(location));
+    request_response.length = json_integer_value(content_length);
+
+    cleanup:
+    json_decref(root);
+    free(ads_retrieve_response.curl_string.string);
     curl_easy_reset(*handle);
     curl_slist_free_all(list);
+
+    printf("File of size %ld can be downloaded from %s\n", request_response.length, request_response.location);
+    return request_response;
 }
 
 bool constrain_dates(struct DATE_RANGE *dates) {
     return mktime(&dates->start) <= mktime(&dates->end);
+}
+
+PRODUCT_STATUS convert_to_product_status(const char *status) {
+    if (strcmp(status, "completed") == 0) return PRODUCT_STATUS_COMPLETED;
+
+    return PRODUCT_STATUS_INVALID;
 }

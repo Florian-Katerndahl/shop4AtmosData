@@ -13,6 +13,11 @@
 #define FORCE_VERSION "Test, Test!"
 
 typedef enum {
+    PRODUCT_STATUS_COMPLETED = 0,
+    PRODUCT_STATUS_INVALID = 9999,
+} PRODUCT_STATUS;
+
+typedef enum {
     ADS_STATUS_OK = 0,
     ADS_STATUS_WARNING = 1
 } ADS_STATUS;
@@ -111,6 +116,7 @@ struct CLIENT {
     int wait_until_complete;
     char *metadata;
     int forget;
+    unsigned int retries;
     CURL **curl_handle;
 };
 
@@ -143,6 +149,14 @@ struct PRODUCT_REQUEST {
     char *format;
 };
 
+struct PRODUCT_RESPONSE {
+    PRODUCT_STATUS state;
+    char *id;
+    char *location;
+    size_t length;
+
+};
+
 /**
  * @brief Print the usage of the `download-cams` program
  * @author Florian Katerndahl
@@ -161,6 +175,11 @@ void print_version(void);
  */
 void print_purpose(void);
 
+/**
+ * @brief
+ * @param api_authentication_file
+ * @param api_authentication
+ */
 void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATION *api_authentication);
 
 /**
@@ -267,8 +286,9 @@ size_t write_curl_string(char *message, size_t size, size_t nmemb, void *data_co
  * @param client
  * @author Florian Katerndahl
  */
-void ads_retrieve(PRODUCT_TYPE product, const struct PRODUCT_REQUEST *request, const char *download_path, CURL **handle,
-                  const struct CLIENT *client);
+struct PRODUCT_RESPONSE
+ads_request_product(PRODUCT_TYPE product, const struct PRODUCT_REQUEST *request, CURL **handle,
+                    const struct CLIENT *client);
 
 /**
  * @brief
@@ -283,5 +303,27 @@ void ads_post_product_request();
  * @author Florian Katerndahl
  */
 bool constrain_dates(struct DATE_RANGE *dates);
+
+PRODUCT_STATUS convert_to_product_status(const char *status);
+
+/**
+ * @brief
+ * @param request
+ * @param handle
+ * @param client
+ * @param fp
+ * @return
+ */
+int ads_download_product(struct PRODUCT_REQUEST *request, CURL **handle, struct CLIENT *client, const char *fp);
+
+/**
+ * @brief
+ * @param response
+ * @param request
+ * @param handle
+ * @param client
+ */
+void ads_check_product_state(struct PRODUCT_RESPONSE *response, struct PRODUCT_REQUEST *request, CURL **handle,
+                             struct CLIENT *client);
 
 #endif //CAMS_DOWNLOAD_H
