@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
         .auth = {0},
         .quiet = 1,
         .debug = 0,
-        .timeout = 0,
+        .timeout = 180, // cdsapi sets it to 60, to low when downloading 2 GB
         .progress = 0,
         .full_stack = 0,
         .delete = 0,
@@ -213,13 +213,6 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // init_curl_handle(&handle, &client); => inside function calls!
-
-    // TODO
-    //  - some sort of URL-generator (typedef'd enum in switch statement with static char array)?
-    //  - result struct -> implemented to check_ads_status
-    //  - writeback function -> implemented to check_ads_status
-    //  - function to handle redirects etc.
     if (check_ads_status(&handle, &client) == ADS_STATUS_WARNING) {
         fprintf(stderr,
                 "Error: Encountered warning with ADS. Please visit %s/%s.\n",
@@ -228,40 +221,47 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    struct PRODUCT_RESPONSE product_response = ads_request_product(PRODUCT_CAMS_REPROCESSED, &request, &handle, &client);
+    struct PRODUCT_RESPONSE product_response = ads_request_product(PRODUCT_CAMS_REPROCESSED, &request, &handle,
+                                                                   &client);
 
     if (product_response.state == PRODUCT_STATUS_INVALID) {
         fprintf(stderr, "Error: Encountered unknown product status in response to POST request\n");
         exit(EXIT_FAILURE);
     }
 
-    while (product_response.state != PRODUCT_STATUS_COMPLETED && client.retries < client.max_retries) {
+    while (product_response.state != PRODUCT_STATUS_COMPLETED && product_response.state != PRODUCT_STATUS_FAILED &&
+           product_response.state != PRODUCT_STATUS_INVALID && client.retries < client.max_retries) {
         printf("Product request in preparation. Try %d/%d. Next request will be made in %d seconds.\n",
                client.retries, client.max_retries, client.max_sleep);
 
-        if (!sleep(client.max_sleep)) {
-            fprintf(stderr, "Error: Program received a SIGNAL while sleeping. Those are currently unhandled.\n");
+        if (sleep(client.max_sleep)) {
+            fprintf(stderr, "Error: Program received a SIGNAL while sleeping. Those are unhandled.\n");
             exit(EXIT_FAILURE);
         }
 
-        ads_check_product_state(&product_response, &request, &handle, &client);
+        ads_check_product_state(&product_response, &handle, &client);
 
         client.retries++;
     }
 
-    if (client.retries == client.max_retries) {
-        fprintf(stderr, "Error: Exceed maximum number of retries. Product request unsuccessful.\n");
+    if (client.retries == client.max_retries && product_response.state != PRODUCT_STATUS_FAILED) {
+        fprintf(stderr, "Error: Exceed maximum number of retries. Product request unsuccessful.\n"
+                        "You can try to run the program with the same request later, to download the requested data.\n");
         exit(EXIT_FAILURE);
     }
 
-    if (!ads_download_product(&request, &handle, &client, "/home/florian/git-repos/cams/download.grib")) {
+    if (product_response.state == PRODUCT_STATUS_FAILED) {
+        fprintf(stderr, "Error: Product request failed. Please check the website for more information\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (ads_download_product(&product_response, &handle, &client, "/home/florian/git-repos/cams/download.grib")) {
         fprintf(stderr, "Error: Failed to download file\n");
         exit(EXIT_FAILURE);
     }
 
-    // remove results
     if (client.delete) {
-        ;
+        int deletion_status = ads_delete_product_request(&product_response, &handle, &client);
     }
 
     free(product_response.location);
