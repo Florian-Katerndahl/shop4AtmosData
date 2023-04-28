@@ -273,8 +273,7 @@ void init_curl_handle(CURL **handle, const struct CLIENT *client) {
 
 ADS_STATUS check_ads_status(CURL **handle, const struct CLIENT *client) {
     ADS_STATUS return_val;
-    // TODO reduce NPOW12 to NPOW6
-    char url[NPOW12];
+    char url[NPOW6];
     int url_status;
 
     struct ADS_STATUS_RESPONSE ads_status_response = {0};
@@ -283,8 +282,8 @@ ADS_STATUS check_ads_status(CURL **handle, const struct CLIENT *client) {
     json_error_t error;
     json_t *warning;
 
-    if ((url_status = snprintf(url, NPOW12, "%s/%s", client->auth.base_url, "status.json")) < 0 ||
-        url_status >= NPOW12) {
+    if ((url_status = snprintf(url, NPOW6, "%s/%s", client->auth.base_url, "status.json")) < 0 ||
+        url_status >= NPOW6) {
         fprintf(stderr, "Error: Failed to create url for ADS status check.\n"
                         "Return value of snprintf: %d\n", url_status);
         exit(EXIT_FAILURE);
@@ -380,9 +379,8 @@ size_t write_curl_generic(char *message, size_t size, size_t n, void *data_conta
 struct PRODUCT_RESPONSE
 ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct PRODUCT_REQUEST *request,
                     CURL **handle, const struct CLIENT *client) {
-    // TODO reduce NPOW12 to NPOW8
     char *product_name;
-    char url[NPOW12];
+    char url[NPOW8];
     int url_status;
 
     struct ADS_STATUS_RESPONSE ads_retrieve_response = {0};
@@ -401,8 +399,8 @@ ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct P
             break;
     }
 
-    if ((url_status = snprintf(url, NPOW12, "%s/resources/%s", client->auth.base_url, product_name)) < 0 ||
-        url_status >= NPOW12) {
+    if ((url_status = snprintf(url, NPOW8, "%s/resources/%s", client->auth.base_url, product_name)) < 0 ||
+        url_status >= NPOW8) {
         fprintf(stderr, "Error: Failed to assemble request url\n");
         exit(EXIT_FAILURE);
     }
@@ -563,12 +561,11 @@ int ads_download_product(struct PRODUCT_RESPONSE *response, CURL **handle, struc
 
 void ads_check_product_state(struct PRODUCT_RESPONSE *response, CURL **handle, struct CLIENT *client) {
     struct CURL_DATA status_response = {0};
-    // TODO reduce NPOW12 to NPOW8
-    char url[NPOW12];
+    char url[NPOW8];
     int url_status;
 
-    if ((url_status = snprintf(url, NPOW12, "%s/tasks/%s", client->auth.base_url, response->id)) < 0 ||
-        url_status >= NPOW12) {
+    if ((url_status = snprintf(url, NPOW8, "%s/tasks/%s", client->auth.base_url, response->id)) < 0 ||
+        url_status >= NPOW8) {
         fprintf(stderr, "Error: Failed to assemble request url\n");
         exit(EXIT_FAILURE);
     }
@@ -660,12 +657,11 @@ void ads_check_product_state(struct PRODUCT_RESPONSE *response, CURL **handle, s
 }
 
 int ads_delete_product_request(struct PRODUCT_RESPONSE *response, CURL **handle, struct CLIENT *client) {
-    // TODO reduce NPOW12 to NPOW8
-    char url[NPOW12];
+    char url[NPOW8];
     int url_status;
 
-    if ((url_status = snprintf(url, NPOW12, "%s/tasks/%s", client->auth.base_url, response->id)) < 0 ||
-        url_status >= NPOW12) {
+    if ((url_status = snprintf(url, NPOW8, "%s/tasks/%s", client->auth.base_url, response->id)) < 0 ||
+        url_status >= NPOW8) {
         fprintf(stderr, "Error: Failed to assemble URL to delete product from ADS.\n");
         exit(EXIT_FAILURE);
     }
