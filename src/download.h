@@ -14,6 +14,9 @@
 
 typedef enum {
     PRODUCT_STATUS_COMPLETED = 0,
+    PRODUCT_STATUS_QUEUED = 1,
+    PRODUCT_STATUS_RUNNING = 2,
+    PRODUCT_STATUS_FAILED = 3,
     PRODUCT_STATUS_INVALID = 9999,
 } PRODUCT_STATUS;
 
@@ -104,28 +107,28 @@ struct API_AUTHENTICATION {
  */
 struct CLIENT {
     struct API_AUTHENTICATION auth;
-    int quiet;                          ///< logging not used for now
-    int debug;                          ///< debugging not used for now
+    int quiet __attribute__((unused));                          ///< logging not used for now
+    int debug __attribute__((unused));                          ///< debugging not used for now
     unsigned int timeout;
-    int progress;                       ///< display progress bar
-    int full_stack;
+    int progress __attribute__((unused));                       ///< display progress bar
+    int full_stack __attribute__((unused));
     int delete;
     unsigned int max_retries;
     unsigned int max_sleep;
     unsigned int last_state;
     int wait_until_complete;
-    char *metadata;
-    int forget;
+    char *metadata __attribute__((unused));
+    int forget __attribute__((unused));
     unsigned int retries;
     CURL **curl_handle;
 };
 
 /**
- * @brief
+ * @brief Simple struct to write responses from server to, combining the data itself as well as its size.
  * @author Florian Katerndahl
  */
-struct CURL_STRING {
-    char *string;
+struct CURL_DATA {
+    char *data;
     size_t length;
 };
 
@@ -134,7 +137,7 @@ struct CURL_STRING {
  * @author Florian Katerndahl
  */
 struct ADS_STATUS_RESPONSE {
-    struct CURL_STRING curl_string;
+    struct CURL_DATA curl_string;
 };
 
 /**
@@ -278,6 +281,16 @@ ADS_STATUS check_ads_status(CURL **handle, const struct CLIENT *client);
 size_t write_curl_string(char *message, size_t size, size_t nmemb, void *data_container_p);
 
 /**
+ * @brief
+ * @param message
+ * @param size
+ * @param n
+ * @param data_container_p
+ * @return
+ */
+size_t write_curl_generic(char *message, size_t size, size_t n, void *data_container_p);
+
+/**
  * @brief Main entry point to CDS API
  * @param product_name
  * @param request
@@ -314,7 +327,7 @@ PRODUCT_STATUS convert_to_product_status(const char *status);
  * @param fp
  * @return
  */
-int ads_download_product(struct PRODUCT_REQUEST *request, CURL **handle, struct CLIENT *client, const char *fp);
+int ads_download_product(struct PRODUCT_RESPONSE *response, CURL **handle, struct CLIENT *client, const char *fp);
 
 /**
  * @brief
@@ -323,7 +336,15 @@ int ads_download_product(struct PRODUCT_REQUEST *request, CURL **handle, struct 
  * @param handle
  * @param client
  */
-void ads_check_product_state(struct PRODUCT_RESPONSE *response, struct PRODUCT_REQUEST *request, CURL **handle,
-                             struct CLIENT *client);
+void ads_check_product_state(struct PRODUCT_RESPONSE *response, CURL **handle, struct CLIENT *client);
+
+/**
+ * @brief
+ * @param response
+ * @param handle
+ * @param client
+ * @return
+ */
+int ads_delete_product_request(struct PRODUCT_RESPONSE *response, CURL **handle, struct CLIENT *client);
 
 #endif //CAMS_DOWNLOAD_H
