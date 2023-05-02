@@ -134,23 +134,27 @@ struct BOUNDING_BOX parse_coordinate_file(char *coordinate_file, double **lon, d
             break;
 
         n_longitude++;
-
         n_latitude++;
     }
 
     fclose(f);
 
     sort_double(longitude, n_longitude, bubble);
-
     sort_double(latitude, n_latitude, bubble);
 
     *lon = longitude;
-
     *lat = latitude;
+    // add/subtract 24.7 * 0.5 for east/west and add/subtract 10.8*0.5 for north/south
+    // needs to be clamped to -180/180 and -90/90
+    double _north = ceil(latitude[n_latitude - 1]) + 5.4;
+    double _west = floor(longitude[0]) - 12.35;
+    double _south = floor(latitude[0]) - 5.4;
+    double _east = ceil(longitude[n_longitude - 1]) + 12.35;
 
     return (struct BOUNDING_BOX) {
-        .north = (int) ceil(latitude[n_latitude - 1]), .east = (int) ceil(longitude[n_longitude - 1]),
-        .south = (int) floor(latitude[0]), .west = (int) floor(longitude[0])
+        .area_subset = 1,
+        .north = (int) _north > 90.0 ? 90.0 : _north , .east = (int) _east > 180.0 ? 180.0 : _east,
+        .south = (int) _south < -90.0 ? -90.0 : _south, .west = (int) _west < -180.0 ? -180.0 : _west
     };
 }
 
