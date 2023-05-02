@@ -191,7 +191,6 @@ int main(int argc, char *argv[]) {
 
     double *longitude, *latitude;
 
-    request.bbox.area_subset = 1;
     request.bbox = parse_coordinate_file(options.coordinates,
                                          &longitude, &latitude);
 
