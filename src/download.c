@@ -408,6 +408,7 @@ const char *time_as_string(SENSING_TIME time) {
     }
 }
 
+// TODO use jansson instead of string gluing?
 const char *assemble_request(const struct PRODUCT_REQUEST *request) {
     char *req = calloc(NPOW12, sizeof(char));
     if (req == NULL) {
