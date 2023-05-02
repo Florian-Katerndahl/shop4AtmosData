@@ -670,21 +670,7 @@ void ads_check_product_state(struct PRODUCT_RESPONSE *response, CURL **handle, s
     CURLcode res = curl_easy_perform(*handle);
     interpret_curl_result(res, 0);
 
-    curl_easy_reset(*handle);
-
-    /* Example of returned JSON => identical to initial request!
-     * {
-     *   "state": "completed",
-     *   "request_id": "a3a00819-ee46-470c-9403-bd842b20828a",
-     *   "location": "https://download-0000-ads-clone.copernicus-climate.eu/cache-compute-0000/cache/data0/adaptor.mars.internal-1682585725.0681317-9181-12-fe1c1646-57d5-431a-b7cf-913ea09f554f.grib",
-     *   "content_length": 2155863600,
-     *   "content_type": "application/x-grib",
-     *   "result_provided_by": "d447a679-22bf-4a39-95be-39c5280c6772",
-     *   "specific_metadata_json": {
-     *     "top_request_origin": "api"
-     *   }
-     * }
-     */
+    curl_easy_reset(*handle); // returned JSON identical to initial request
 
     json_t *root, *state, *location, *content_length;
     json_error_t error;
@@ -767,5 +753,5 @@ int ads_delete_product_request(struct PRODUCT_RESPONSE *response, CURL **handle,
 
     curl_easy_reset(*handle);
 
-    return 1;
+    return 0;
 }
