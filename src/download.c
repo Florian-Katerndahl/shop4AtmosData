@@ -30,8 +30,8 @@ void print_usage(void) {
         "[-t|--daily_tables]\tbuild daily tables? Default: false\n"
         "[-s|--climatology]\tbuild climatology? Default: false\n\n"
         "Optional arguments:\n"
-        "<--start>\t\tStart date. Default: 1970-01-01.\n"
-        "<--end>\t\tStart date. Default: 1970-01-01.\n"
+        "<--start>\t\tStart date. Default: 2003-01-01.\n"
+        "<--end>\t\t\tStart date. Default: 2003-01-01.\n"
         "<-a|--authentication>\toptional...\n");
 }
 
@@ -45,14 +45,15 @@ void print_purpose(void) {
 
 
 void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATION *api_authentication) {
-    char line[NPOW16];
+    char line[NPOW8];
     char *separator;
     char *needle_p;
 
     while (!feof(api_authentication_file)) {
-        fgets(line, NPOW16, api_authentication_file);
-        line[strlen(line) - 1] = '\0';
+        fgets(line, NPOW8, api_authentication_file);
         if ((needle_p = strstr(line, "url")) != NULL) {
+            line[strlen(line) - 1] = '\0';
+
             while (*needle_p != ' ') needle_p++;
 
             needle_p++;
@@ -61,6 +62,8 @@ void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATI
 
             strncpy(api_authentication->base_url, needle_p, NPOW16); // automatically zero terminated because of calloc
         } else if ((needle_p = strstr(line, "key")) != NULL) {
+            line[strlen(line) - 1] = '\0';
+
             while (*needle_p != ' ') needle_p++;
 
             needle_p++;
@@ -90,6 +93,8 @@ void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATI
             exit(EXIT_FAILURE);
         }
     }
+
+    printf("verify arg: %d", api_authentication->verify);
 }
 
 struct BOUNDING_BOX parse_coordinate_file(char *coordinate_file, double **lon, double **lat) {
@@ -376,6 +381,89 @@ size_t write_curl_generic(char *message, size_t size, size_t n, void *data_conta
     return message_length;
 }
 
+const char *time_as_string(SENSING_TIME time) {
+    switch (time) {
+        case SENSING_TIME_00:
+            return "00:00";
+        case SENSING_TIME_03:
+            return "03:00";
+        case SENSING_TIME_06:
+            return "06:00";
+        case SENSING_TIME_09:
+            return "09:00";
+        case SENSING_TIME_12:
+            return "12:00";
+        case SENSING_TIME_15:
+            return "15:00";
+        case SENSING_TIME_18:
+            return "18:00";
+        case SENSING_TIME_21:
+            return "21:00";
+        default:
+            return NULL;
+    }
+}
+
+const char *assemble_request(const struct PRODUCT_REQUEST *request) {
+    char *req = calloc(NPOW12, sizeof(char));
+    if (req == NULL) {
+         fprintf(stderr, "Error: Failed to allocate memory for request string.\n");
+         exit(EXIT_FAILURE);
+    }
+
+    // TODO good practice would be to check return values!
+    char start_d[NPOW4], end_d[NPOW4];
+    strftime(start_d, NPOW4, "%F", &request->dates.start);
+    strftime(end_d, NPOW4, "%F", &request->dates.end);
+
+    const char *sensing_time = time_as_string(request->time);
+
+    char area[NPOW6] = {0};
+    if (request->bbox.area_subset) {
+        // TODO check return value of snprintf!
+        snprintf(area, NPOW6, ", area: [%d, %d, %d, %d]",
+                 request->bbox.north,
+                 request->bbox.west,
+                 request->bbox.south,
+                 request->bbox.east);
+    }
+
+    // TODO check return value of snprintf!
+    snprintf(req, NPOW12, "{'variable': '%s', 'date': '%s/%s', 'time': '%s', 'format': '%s'%s}",
+             request->variable,
+             start_d,
+             end_d,
+             sensing_time,
+             request->format,
+             area);
+
+    return req;
+}
+
+const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const struct OPTIONS *options) {
+    char *req = calloc(NPOW22, sizeof(char));
+
+    if (req == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for download path string.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // TODO good practice would be to check return values!
+    char start_d[NPOW4], end_d[NPOW4];
+    strftime(start_d, NPOW4, "%Y%m%d", &request->dates.start);
+    strftime(end_d, NPOW4, "%Y%m%d", &request->dates.end);
+
+    // TODO check return value of snprintf!
+    snprintf(req, NPOW22, "%s%s_%s%s.%s",
+             options->output_directory,
+             request->variable,
+             start_d,
+             end_d,
+             request->format);
+
+    return req;
+}
+
 struct PRODUCT_RESPONSE
 ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct PRODUCT_REQUEST *request,
                     CURL **handle, const struct CLIENT *client) {
@@ -418,15 +506,12 @@ ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct P
     list = curl_slist_append(list, "Content-Type: application/json");
     curl_easy_setopt(*handle, CURLOPT_HTTPHEADER, list);
 
-    // "{'variable': 'total_aerosol_optical_depth_469nm', 'date': '2003-01-01/2003-01-01', 'time': '00:00', 'format': 'grib'}"
-    char *d = "{'variable': 'total_aerosol_optical_depth_469nm', 'date': '2002-01-01/2010-01-09', 'time': '12:00', 'format': 'grib'}";
+    const char *d = assemble_request(request);
     curl_easy_setopt(*handle, CURLOPT_POSTFIELDS, d);
 
     CURLcode res = curl_easy_perform(*handle);
     interpret_curl_result(res, 0);
 
-    // TODO some memory corruption happening? Writing further than needed/allowed?
-    //ads_retrieve_response.curl_string.data[ads_retrieve_response.curl_string.length] = '\0';
 
     /* Example of returned JSON
      * {
@@ -499,6 +584,7 @@ ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct P
     cleanup:
     json_decref(root);
     free(ads_retrieve_response.curl_string.data);
+    free((char *)d);
     curl_easy_reset(*handle);
     curl_slist_free_all(list);
 
