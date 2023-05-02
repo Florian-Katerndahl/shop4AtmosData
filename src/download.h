@@ -180,9 +180,10 @@ void print_version(void);
 void print_purpose(void);
 
 /**
- * @brief
- * @param api_authentication_file
- * @param api_authentication
+ * @brief Parse API authentication file and save its result into `api_authentication`
+ * @param api_authentication_file File handle to authentication file
+ * @param api_authentication struct containing the fields extracted from `api_authentication_file`
+ * @author Florian Katerndahl
  */
 void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATION *api_authentication);
 
@@ -196,14 +197,17 @@ void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATI
  * @note The file should contain two columns separated by white space, and no header. The first column should give the
  * longitude (X), the second column the latitude (Y) with coordinates in decimal degree
  * (negative values for West/South). Any other column is ignored.
+ * @author Florian Katerndahl
  */
 struct BOUNDING_BOX parse_coordinate_file(char *coordinate_file, double **lon, double **lat);
 
 /**
- * @brief
- * @param api_authentication
- * @param options
- * @return
+ * @brief Small wrapper function which which dynamically tries to open a custom authentication file or tries to retrieve
+ * the environment variable `ADSAUTH`.
+ * @param api_authentication struct holding fields from API authentication file. To be populated
+ * @param options struct containing parsed command-line arguments; used to decide from where to retrieve authentication file.
+ * @return Zero on success
+ * @warning Implementation does not allow non-zero exit codes!
  * @author Florian Katerndahl
  */
 int init_api_authentication(struct API_AUTHENTICATION *api_authentication, const struct OPTIONS *options);
@@ -216,17 +220,18 @@ int init_api_authentication(struct API_AUTHENTICATION *api_authentication, const
 void free_api_authentication(const struct API_AUTHENTICATION *api_authentication);
 
 /**
- * @brief
- * @param dest
- * @param optopt
- * @return
+ * @brief Given the optopt code, which ist set be getopt, return a pointer to the string (i.e. long) version of that argument.
+ * Used for error reporting.
+ * @param dest Pointer to set
+ * @param optopt `optopt` code from getopt_long
+ * @return `dest` pointing to a static character string
  * @warning This could easily get out of sync with the rest of the program. Terminates program with exit code 129 if
  * no optcode could be matched
  */
 const char *reverse_code_optopt(const char *dest, int optopt);
 
 /**
- * Given the path to a file, checks against flags specified.
+ * @brief Given the path to a file, checks against flags specified.
  * @param fname File path
  * @param flags Flags to check against (e.g. F_OK | R_OK)
  * @return True if all checks pass, false otherwise.
@@ -276,18 +281,20 @@ ADS_STATUS check_ads_status(CURL **handle, const struct CLIENT *client);
  * @param data_container_p Pointer to struct which resembles the data structure passed into this function. Actual struct
  * into which data shall be saved needs to be set with CURLOPT_WRITEDATA.
  * @return Bytes handled, i.e. size * nmemb.
- * @warning The data is not null-terminated. The function must null-terminate the data on each call.
+ * @warning The data delivered by cURL is not null-terminated. The function must null-terminate the data on each call.
  * @author Florian Katerndahl
  */
 size_t write_curl_string(char *message, size_t size, size_t nmemb, void *data_container_p);
 
 /**
- * @brief
- * @param message
- * @param size
- * @param n
- * @param data_container_p
- * @return
+ * @brief Generic version of `write_curl_string`. Here, the lsat byte is not set to zero.
+ * @param message Pointer to the data delivered data
+ * @param size Always 1
+ * @param n Size of `content`, i.e. the size of the data which gets passed to this function.
+ * @param data_container_p Pointer to struct which resembles the data structure passed into this function. Actual struct
+ * into which data shall be saved needs to be set with CURLOPT_WRITEDATA.
+ * @return Bytes handled, i.e. size * nmemb.
+ * @author Florian Katerndahl
  */
 size_t write_curl_generic(char *message, size_t size, size_t n, void *data_container_p);
 
@@ -321,23 +328,18 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request);
 const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const struct OPTIONS *options);
 
 /**
- * @brief Main entry point to CDS API
- * @param product_name
- * @param request
- * @param download_path
- * @param handle
- * @param client
+ * @brief Post product request to ADS-API
+ * @param product_name PRODUCT_TYPE, dataset which should be queried.
+ * @param request Request struct containing query options, representing JSON being sent to ADS
+ * @param handle cURL handle
+ * @param client Client struct
+ * @return Response struct containing a selection of JSON response fields
+ * @note Currently, only 'cams-global-reanalysis-eac4' is implemented.
  * @author Florian Katerndahl
  */
 struct PRODUCT_RESPONSE
 ads_request_product(PRODUCT_TYPE product, const struct PRODUCT_REQUEST *request, CURL **handle,
                     const struct CLIENT *client);
-
-/**
- * @brief
- * @author Florian Katerndahl
- */
-void ads_post_product_request();
 
 /**
  * @brief Check if a given date range conforms to semantic meaning.
@@ -347,33 +349,43 @@ void ads_post_product_request();
  */
 bool constrain_dates(struct DATE_RANGE *dates);
 
+/**
+ * @brief Convert string representation of product status in ADS-response to enum
+ * @param status Product status as string
+ * @return Product status as integer
+ * @author Florian Katerndahl
+ */
 PRODUCT_STATUS convert_to_product_status(const char *status);
 
 /**
- * @brief
- * @param request
- * @param handle
- * @param client
- * @param fp
- * @return
+ * @brief Query the API endpoint if product status is 'finished' and downloads the data product
+ * @param response Response struct
+ * @param handle cURL handle
+ * @param client Client struct
+ * @param fp Character string, representing absolute file path where to save file
+ * @return Integer-encoded status. Zero on success
+ * @warning Only a zero exit code is currently possible
+ * @author Florian Katerndahl
  */
 int ads_download_product(struct PRODUCT_RESPONSE *response, CURL **handle, struct CLIENT *client, const char *fp);
 
 /**
- * @brief
- * @param response
- * @param request
- * @param handle
- * @param client
+ * @brief Query the ADS API to check for the product status
+ * @param response Response struct
+ * @param handle cURL handle
+ * @param client Client struct
+ * @author Florian Katerndahl
  */
 void ads_check_product_state(struct PRODUCT_RESPONSE *response, CURL **handle, struct CLIENT *client);
 
 /**
- * @brief
- * @param response
- * @param handle
- * @param client
- * @return
+ * @brief Send a request to the ADS API to delete a product request
+ * @param response Response struct
+ * @param handle cURL handle
+ * @param client Client struct
+ * @return Integer-encoded status. Zero on success
+ * @note Implementation does not allow for non-zero exit code!
+ * @author Florian Katerndahl
  */
 int ads_delete_product_request(struct PRODUCT_RESPONSE *response, CURL **handle, struct CLIENT *client);
 
