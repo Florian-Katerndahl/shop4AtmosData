@@ -70,10 +70,11 @@ int main(int argc, char *argv[]) {
     __attribute__((unused)) CURLcode res;
 
     // populate default/non-user-changeable-options
-    request.dates.start = (struct tm) {.tm_year = 70, .tm_mon = 0, .tm_mday = 1};
-    request.dates.end = (struct tm) {.tm_year = 70, .tm_mon = 0, .tm_mday = 1};
+    request.dates.start = (struct tm) {.tm_year = 103, .tm_mon = 0, .tm_mday = 1};
+    request.dates.end = (struct tm) {.tm_year = 103, .tm_mon = 0, .tm_mday = 1};
     request.variable = "total_aerosol_optical_depth_469nm";
     request.format = "grib";
+    request.time = SENSING_TIME_00;
 
     static struct option long_options[] = {
         {"help",             no_argument,       NULL, 'h'},
@@ -190,6 +191,7 @@ int main(int argc, char *argv[]) {
 
     double *longitude, *latitude;
 
+    request.bbox.area_subset = 1;
     request.bbox = parse_coordinate_file(options.coordinates,
                                          &longitude, &latitude);
 
@@ -255,17 +257,21 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (ads_download_product(&product_response, &handle, &client, "/home/florian/git-repos/cams/download.grib")) {
+    const char *download_path = assemble_download_path(&request, &options);
+
+    if (ads_download_product(&product_response, &handle, &client, download_path)) {
         fprintf(stderr, "Error: Failed to download file\n");
         exit(EXIT_FAILURE);
     }
 
     if (client.delete) {
-        int deletion_status = ads_delete_product_request(&product_response, &handle, &client);
+        int deletion_status __attribute__((unused)) = ads_delete_product_request(&product_response, &handle, &client);
     }
 
     free(product_response.location);
     free(product_response.id);
+
+    free((char *)download_path);
 
     curl_easy_cleanup(handle);
     curl_global_cleanup();
