@@ -30,14 +30,14 @@ typedef enum {
 } PRODUCT_TYPE;
 
 typedef enum {
-    TIME_00 = 0,
-    TIME_03 = 1,
-    TIME_06 = 2,
-    TIME_09 = 3,
-    TIME_12 = 4,
-    TIME_15 = 5,
-    TIME_18 = 6,
-    TIME_21 = 7,
+    SENSING_TIME_00 = 0,
+    SENSING_TIME_03 = 1,
+    SENSING_TIME_06 = 2,
+    SENSING_TIME_09 = 3,
+    SENSING_TIME_12 = 4,
+    SENSING_TIME_15 = 5,
+    SENSING_TIME_18 = 6,
+    SENSING_TIME_21 = 7,
 } SENSING_TIME;
 
 enum {
@@ -83,6 +83,7 @@ struct OPTIONS {
  * @author Florian Katerndahl
  */
 struct BOUNDING_BOX {
+    int area_subset;
     int north;
     int east;
     int south;
@@ -289,6 +290,35 @@ size_t write_curl_string(char *message, size_t size, size_t nmemb, void *data_co
  * @return
  */
 size_t write_curl_generic(char *message, size_t size, size_t n, void *data_container_p);
+
+/**
+ * @brief Translate a SENSING_TIME type to its string representation.
+ * @param time Struct which should be translated.
+ * @return Pointer to string representation.
+ * @author Florian Katerndahl
+ */
+const char *time_as_string(SENSING_TIME time);
+
+/**
+ * @brief Construct a string in JSON format which can is passed onto CURL for a product POST request.
+ * @param request Pointer to request struct
+ * @return A pointer to the JSON formatted string. The caller is responsible for freeing the string after usage!
+ * @note The CDS-API allows for multiple model base times, this current implementation only allows for a single base
+ * time per request.
+ * @warning The caller is responsible for freeing the string after usage!
+ * @author Florian Katerndahl
+ */
+const char *assemble_request(const struct PRODUCT_REQUEST *request);
+
+/**
+ * @brief Given a download directory and the request parameters, generate a suitable download path.
+ * @param request Pointer to request struct
+ * @param options Pointer to options struct
+ * @return A pointer to the formatted download path
+ * @warning The caller is responsible for freeing the string after usage!
+ * @author Florian Katerndahl
+ */
+const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const struct OPTIONS *options);
 
 /**
  * @brief Main entry point to CDS API
