@@ -14,7 +14,7 @@ inside the cloned repo. This will create an executable in your current working d
 
 ### Dependencies
 
-- cURL: Install libcurl via your systems package manager
+- [cURL](https://curl.se/): Install libcurl via your systems package manager
 - [Jansson](https://github.com/akheron/jansson): Please follow the instructions detailed [here](https://jansson.readthedocs.io/en/latest/gettingstarted.html)
 for installing `jansson`.
 - ECWMF (currently not needed)
