@@ -14,10 +14,11 @@ inside the cloned repo. This will create an executable in your current working d
 
 ### Dependencies
 
+- `cmake` and `make`
 - [cURL](https://curl.se/): Install libcurl via your systems package manager
 - [Jansson](https://github.com/akheron/jansson): Please follow the instructions detailed [here](https://jansson.readthedocs.io/en/latest/gettingstarted.html)
 for installing `jansson`.
-- ECWMF (currently not needed)
+- [ecCodes](https://github.com/ecmwf/eccodes): Please follow the instructions detailed in the Repo's Readme to build the library either from source or a release bundle (recommended!). See [here](https://confluence.ecmwf.int/display/ECC/ecCodes+installation) for compiliation options. Please use the following flags: `-DENABLE_PNG=ON -DENABLE_ECCODES_OMP_THREADS=ON -DENABLE_MEMFS=ON`. **Current version used:** `2.30.0`.
 
 ## ADS Access
 
