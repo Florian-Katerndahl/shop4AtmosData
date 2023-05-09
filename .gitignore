@@ -2,6 +2,7 @@
 *.out
 *.o
 cams-download
+cams-process
 
 # don't commit folders
 .idea/
