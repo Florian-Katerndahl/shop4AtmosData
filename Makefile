@@ -1,6 +1,6 @@
 CC=gcc
 WERROR=-Werror
-CFLAGS=-Wall -Wextra -Wdouble-promotion -Wuninitialized -Winit-self -flto -O0 -std=c11 -pedantic -ggdb#-fsanitize=address -fsanitize=leak -fsanitize=undefined
+CFLAGS=-Wall -Wextra -Wdouble-promotion -Wuninitialized -Winit-self -flto -O0 -std=c11 -pedantic -fsanitize=address -fsanitize=leak -fsanitize=undefined #-ggdb
 LLIBS=-ljansson -lcurl
 ECCODES=-leccodes
 MATH=-lm
