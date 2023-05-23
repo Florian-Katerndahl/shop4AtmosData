@@ -7,3 +7,5 @@ cams-process
 # don't commit folders
 .idea/
 docs/
+downloads/
+
