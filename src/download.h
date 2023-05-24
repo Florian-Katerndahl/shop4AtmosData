@@ -27,6 +27,7 @@ typedef enum {
 
 typedef enum {
     PRODUCT_CAMS_REPROCESSED = 0,
+    PRODUCT_CAMS_COMPOSITION_FORECAST = 1,
 } PRODUCT_TYPE;
 
 typedef enum {
