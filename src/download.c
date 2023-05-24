@@ -30,6 +30,7 @@ void print_usage(void) {
         "<-c|--coordinates>\tPath to file with WRS2 center coordinates, if subset of area is to be queried. Otherwise the entire model area is requested.\n"
         "<--start>\t\tStart date. Default: 2003-01-01.\n"
         "<--end>\t\t\tStart date. Default: 2003-01-01.\n"
+        "<--product>\t\tProduct type to query. Currently, only REPROCESSED and FORECAST are implemented. Default is REPROCESSED\n"
         "<-t|--daily_tables>\tbuild daily tables? Default: false\n"
         "<-s|--climatology>\tbuild climatology? Default: false\n\n"
         "<-a|--authentication>\toptional...\n");
@@ -154,6 +155,13 @@ struct BOUNDING_BOX parse_coordinate_file(char *coordinate_file, double **lon, d
         .north = (int) _north > 90.0 ? 90.0 : _north, .east = (int) _east > 180.0 ? 180.0 : _east,
         .south = (int) _south < -90.0 ? -90.0 : _south, .west = (int) _west < -180.0 ? -180.0 : _west
     };
+}
+
+PRODUCT_TYPE product_string_to_type(const char *str) {
+    if (strcasecmp(str, "REPROCESS") == 0) return PRODUCT_CAMS_REPROCESSED;
+    if (strcasecmp(str, "FORECAST") == 0) return PRODUCT_CAMS_COMPOSITION_FORECAST;
+    fprintf(stderr, "ERROR: Unkown product '%s'\n", str);
+    exit(EXIT_FAILURE);
 }
 
 int init_api_authentication(struct API_AUTHENTICATION *api_authentication, const struct OPTIONS *options) {
@@ -419,7 +427,7 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
         exit(EXIT_FAILURE);
     }
 
-    // could also rather easily be an array
+    // TODO add possibility to pass an array
     if (json_object_set_new(json_request, "time", json_string(time_as_string(request->time)))) {
         fprintf(stderr, "ERROR: Failed to set 'time' key in request\n");
         exit(EXIT_FAILURE);
@@ -457,6 +465,19 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
                                                                    request->bbox.east))) {
         fprintf(stderr, "ERROR: Failed to set 'area' key in request\n");
         exit(EXIT_FAILURE);
+    }
+
+    if (request->product == PRODUCT_CAMS_COMPOSITION_FORECAST) {
+        if (json_object_set_new(json_request, "type", json_string("forecast"))) {
+            fprintf(stderr, "ERROR: Failed to set key 'type' key in request\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // TODO make user settable with possibility to pass an array
+        if (json_object_set_new(json_request, "leadtime_hour", json_string("0"))) {
+            fprintf(stderr, "ERROR: Failed to set 'leadtime_hour' key in request\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     char *req = json_dumps(json_request, JSON_COMPACT | JSON_ENSURE_ASCII | JSON_SORT_KEYS);
@@ -502,8 +523,7 @@ const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const 
 }
 
 struct PRODUCT_RESPONSE
-ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct PRODUCT_REQUEST *request,
-                    CURL **handle, const struct CLIENT *client) {
+ads_request_product(const struct PRODUCT_REQUEST *request, CURL **handle, const struct CLIENT *client) {
     char *product_name;
     char url[NPOW12];
     int url_status;
@@ -516,7 +536,7 @@ ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct P
     json_error_t error;
     json_t *warning;
 
-    switch (product) {
+    switch (request->product) {
         case PRODUCT_CAMS_REPROCESSED:
             product_name = "cams-global-reanalysis-eac4";
             break;
