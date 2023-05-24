@@ -93,8 +93,6 @@ void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATI
             exit(EXIT_FAILURE);
         }
     }
-
-    printf("verify arg: %d", api_authentication->verify);
 }
 
 struct BOUNDING_BOX parse_coordinate_file(char *coordinate_file, double **lon, double **lat) {
@@ -717,19 +715,19 @@ void ads_check_product_state(struct PRODUCT_RESPONSE *response, CURL **handle, s
     size_t file_location_size = strlen(json_string_value(location));
 
     if (curr_buff_size < file_location_size) {
-        char *new_data_p = realloc(response->location, sizeof(char) * (curr_buff_size + file_location_size + 1));
+        response->location = realloc(response->location, sizeof(char) * (file_location_size + 1));
 
-        if (new_data_p == NULL) {
+        if (response->location == NULL) {
             fprintf(stderr, "Error: Failed to allocate memory for download path on server.\n");
             exit(EXIT_FAILURE);
         }
-
-        response->location = new_data_p;
     }
 
-    memset(response->location, 0, strlen(response->location) + 1);
-    // TODO check result of strcpy!
-    strcpy(response->location, json_string_value(location));
+    // checking return value of strcpy in this way doesn't make sense - right?
+    if (strcpy(response->location, json_string_value(location)) == NULL) {
+        fprintf(stderr, "ERROR: Strcpy returned null value\n");
+        goto cleanup;
+    }
 
     cleanup:
     json_decref(root);
