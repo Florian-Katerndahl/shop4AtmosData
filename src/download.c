@@ -416,7 +416,7 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
          exit(EXIT_FAILURE);
     }
 
-    // TODO good practice would be to check return values!
+    // TODO good practice is to check return values!
     char start_d[NPOW4], end_d[NPOW4];
     strftime(start_d, NPOW4, "%F", &request->dates.start);
     strftime(end_d, NPOW4, "%F", &request->dates.end);
@@ -473,7 +473,7 @@ struct PRODUCT_RESPONSE
 ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct PRODUCT_REQUEST *request,
                     CURL **handle, const struct CLIENT *client) {
     char *product_name;
-    char url[NPOW8];
+    char url[NPOW12];
     int url_status;
 
     struct ADS_STATUS_RESPONSE ads_retrieve_response = {0};
@@ -488,12 +488,15 @@ ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct P
         case PRODUCT_CAMS_REPROCESSED:
             product_name = "cams-global-reanalysis-eac4";
             break;
+        case PRODUCT_CAMS_COMPOSITION_FORECAST:
+            product_name = "cams-global-atmospheric-composition-forecasts";
+            break;
         default:
             break;
     }
 
-    if ((url_status = snprintf(url, NPOW8, "%s/resources/%s", client->auth.base_url, product_name)) < 0 ||
-        url_status >= NPOW8) {
+    if ((url_status = snprintf(url, NPOW12, "%s/resources/%s", client->auth.base_url, product_name)) < 0 ||
+        url_status >= NPOW12) {
         fprintf(stderr, "Error: Failed to assemble request url\n");
         exit(EXIT_FAILURE);
     }
