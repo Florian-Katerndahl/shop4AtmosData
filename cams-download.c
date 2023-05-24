@@ -73,6 +73,7 @@ int main(int argc, char *argv[]) {
     // populate default/non-user-changeable-options
     request.dates.start = (struct tm) {.tm_year = 103, .tm_mon = 0, .tm_mday = 1};
     request.dates.end = (struct tm) {.tm_year = 103, .tm_mon = 0, .tm_mday = 1};
+    request.product = PRODUCT_CAMS_REPROCESSED;
     request.variable = "total_aerosol_optical_depth_469nm";
     request.format = "grib";
     request.time = SENSING_TIME_00;
@@ -85,12 +86,13 @@ int main(int argc, char *argv[]) {
         {"coordinates",      required_argument, NULL, 'c'},
         {"start",            required_argument, NULL, '0'},
         {"end",              required_argument, NULL, '1'},
+        {"product",         required_argument, NULL, '2'},
         {"output_directory", required_argument, NULL, 'o'},
         {0,                  0,                 0,    0}
     };
 
     // TODO why can I remove a letter from shortopts and still match the short version?
-    while ((optid = getopt_long_only(argc, argv, "+:hvia:c:o:01", long_options, &option_index)) != -1) {
+    while ((optid = getopt_long_only(argc, argv, "+:hvia:c:o:012:", long_options, &option_index)) != -1) {
         switch (optid) {
             case 0: // getopt_long returns `val` if flag == NULL; otherwise 0 (in which case it stores val in flag)
                 break;
@@ -151,6 +153,13 @@ int main(int argc, char *argv[]) {
                     exit(EXIT_FAILURE);
                 }
             }
+                break;
+            case '2':
+                if (optarg == 0) {
+                    // if text is present, optarg points to it; otherwise it is set to 0
+                    fprintf(stderr, "You shouldn't be able to reach this code!!\n");
+                }
+                request.product = product_string_to_type(optarg);
                 break;
             case ':':
                 fprintf(stderr, "Error: expected option for argument -%c/-%s is missing\n", optopt,
@@ -228,8 +237,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    struct PRODUCT_RESPONSE product_response = ads_request_product(PRODUCT_CAMS_REPROCESSED, &request, &handle,
-                                                                   &client);
+    struct PRODUCT_RESPONSE product_response = ads_request_product(&request, &handle, &client);
 
     if (product_response.state == PRODUCT_STATUS_INVALID) {
         fprintf(stderr, "Error: Encountered unknown product status in response to POST request\n");

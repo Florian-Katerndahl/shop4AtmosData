@@ -147,6 +147,7 @@ struct ADS_STATUS_RESPONSE {
  * @author Florian Katerndahl
  */
 struct PRODUCT_REQUEST {
+    PRODUCT_TYPE product;
     struct BOUNDING_BOX bbox;
     char *variable;
     struct DATE_RANGE dates;
@@ -201,6 +202,14 @@ void parse_authentication(FILE *api_authentication_file, struct API_AUTHENTICATI
  * @author Florian Katerndahl
  */
 struct BOUNDING_BOX parse_coordinate_file(char *coordinate_file, double **lon, double **lat);
+
+/**
+ * @brief Convert string representation of product to integer representation of type PRODUCT_TYPE
+ * @param str Pointer to string denoting which product to download. Currently implemented: REPROCESS, FORECAST
+ * @return Integer representation of product
+ * @author Florian Katerndahl
+ */
+PRODUCT_TYPE product_string_to_type(const char *str);
 
 /**
  * @brief Small wrapper function which which dynamically tries to open a custom authentication file or tries to retrieve
@@ -330,7 +339,6 @@ const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const 
 
 /**
  * @brief Post product request to ADS-API
- * @param product_name PRODUCT_TYPE, dataset which should be queried.
  * @param request Request struct containing query options, representing JSON being sent to ADS
  * @param handle cURL handle
  * @param client Client struct
@@ -339,8 +347,7 @@ const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const 
  * @author Florian Katerndahl
  */
 struct PRODUCT_RESPONSE
-ads_request_product(PRODUCT_TYPE product, const struct PRODUCT_REQUEST *request, CURL **handle,
-                    const struct CLIENT *client);
+ads_request_product(const struct PRODUCT_REQUEST *request, CURL **handle, const struct CLIENT *client);
 
 /**
  * @brief Check if a given date range conforms to semantic meaning.
