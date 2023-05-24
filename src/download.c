@@ -451,13 +451,12 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
         exit(EXIT_FAILURE);
     }
 
-    if (request->bbox.area_subset) {
-        if (json_object_set_new(json_request, "area",
-                                json_pack("[iiii]", request->bbox.north, request->bbox.west, request->bbox.south,
-                                          request->bbox.east))) {
-            fprintf(stderr, "ERROR: Failed to set 'area' key in request\n");
-            exit(EXIT_FAILURE);
-        }
+    if (request->bbox.area_subset && json_object_set_new(json_request, "area",
+                                                         json_pack("[iiii]", request->bbox.north, request->bbox.west,
+                                                                   request->bbox.south,
+                                                                   request->bbox.east))) {
+        fprintf(stderr, "ERROR: Failed to set 'area' key in request\n");
+        exit(EXIT_FAILURE);
     }
 
     char *req = json_dumps(json_request, JSON_COMPACT | JSON_ENSURE_ASCII | JSON_SORT_KEYS);
