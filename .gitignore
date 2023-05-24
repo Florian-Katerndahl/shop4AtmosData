@@ -1,6 +1,7 @@
 # don't commit binary output files
 *.out
 *.o
+src/*.o
 cams-download
 cams-process
 
