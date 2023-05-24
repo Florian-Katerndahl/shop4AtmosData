@@ -2,7 +2,9 @@ CC=gcc
 WERROR=-Werror
 CFLAGS=-Wall -Wextra -Wdouble-promotion -Wuninitialized -Winit-self -flto -O0 -std=c11 -pedantic -ggdb#-fsanitize=address -fsanitize=leak -fsanitize=undefined
 LLIBS=-ljansson -lcurl
-ECCODES=-leccodes
+ECCODES=-L/usr/local/lib -leccodes
+GRIBAPI=-lgrib_api
+GDAL=-lgdal
 MATH=-lm
 
 .PHONY=all clean
@@ -25,7 +27,7 @@ cams-download: cams-download.c sort download api
 	$(CC) $(CFLAGS) cams-download.c src/download.o src/sort.o src/api.o -o cams-download $(LLIBS) $(MATH)
 
 cams-process: cams-process.c gributils
-	$(CC) $(CFLAGS) cams-process.c src/gributils.o -o cams-process
+	$(CC) $(CFLAGS) cams-process.c src/gributils.o -o cams-process $(GDAL) $(ECCODES)
 
 docs: src/download.h src/sort.h src/api.h src/gributils.h
 	doxygen Doxyfile
