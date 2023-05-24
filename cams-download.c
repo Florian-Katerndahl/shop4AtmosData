@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
     opterr = NO_GETOPT_ERROR_OUTPUT ? 0 : 1;
 
     static struct OPTIONS options = {0};
+    bool use_area_subset = false;
 
     static struct API_AUTHENTICATION api_authentication = {0};
 
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
         .auth = {0},
         .quiet = 1,
         .debug = 0,
-        .timeout = 180, // cdsapi sets it to 60, to low when downloading 2 GB
+        .timeout = 1800, // cdsapi sets it to 60, to low when downloading 2 GB
         .progress = 0,
         .full_stack = 0,
         .delete = 0,
@@ -115,6 +116,7 @@ int main(int argc, char *argv[]) {
                     // if text is present, optarg points to it; otherwise it is set to 0
                     fprintf(stderr, "You shouldn't be able to reach this code!!\n");
                 }
+                use_area_subset = true;
                 strncpy(options.coordinates, optarg, NPOW16);
                 break;
             case 'o':
@@ -175,7 +177,7 @@ int main(int argc, char *argv[]) {
     }
 
     if ((options.use_custom_authentication && validate_file(options.authentication, F_OK | R_OK) == false) ||
-        validate_file(options.coordinates, F_OK | R_OK) == false ||
+        (use_area_subset && validate_file(options.coordinates, F_OK | R_OK) == false) ||
         validate_directory(options.output_directory) == false) {
         fprintf(stderr, "Error: Credential file, coordinate file or output directory either do not "
                         "exist, or are not accessible.\n");
@@ -189,16 +191,20 @@ int main(int argc, char *argv[]) {
 
     client.auth = api_authentication;
 
-    double *longitude, *latitude;
+    if (use_area_subset) {
+        double *longitude, *latitude;
 
-    request.bbox = parse_coordinate_file(options.coordinates,
-                                         &longitude, &latitude);
+        request.bbox = parse_coordinate_file(options.coordinates,
+                                             &longitude, &latitude);
 
-    printf("North: %d, East: %d, South: %d, West: %d\n",
-           request.bbox.north, request.bbox.east, request.bbox.south, request.bbox.west);
+        printf("North: %d, East: %d, South: %d, West: %d\n",
+               request.bbox.north, request.bbox.east, request.bbox.south, request.bbox.west);
 
-    free(longitude);
-    free(latitude);
+        free(longitude);
+        free(latitude);
+    } else {
+        request.bbox.area_subset = 0;
+    }
 
     curl = curl_global_init(CURL_GLOBAL_DEFAULT);
 

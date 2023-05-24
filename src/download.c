@@ -20,18 +20,18 @@
 
 void print_usage(void) {
     printf(
-        "Usage: cams-download [-h|--help] [-v|--version] [-i|--purpose] [-c|--coordinates] "
-        "[-o|--output_directory] [-t|--daily_tables] [-s|--climatology] <--start> <--end> <-a|--authentication>\n\n"
+        "Usage: cams-download [-h|--help] [-v|--version] [-i|--purpose] "
+        "[-o|--output_directory] <-c|--coordinates> <--start> <--end> <-t|--daily_tables> <-s|--climatology> <-a|--authentication>\n\n"
         "[-h|--help]\t\tprint this help page and exit\n"
         "[-v|--version]\t\tprint version\n"
         "[-i|--purpose]\t\tshow program's purpose\n\n"
-        "[-c|--coordinates]\t...\n"
         "[-o|--output_directory]\t...\n"
-        "[-t|--daily_tables]\tbuild daily tables? Default: false\n"
-        "[-s|--climatology]\tbuild climatology? Default: false\n\n"
         "Optional arguments:\n"
+        "<-c|--coordinates>\tPath to file with WRS2 center coordinates, if subset of area is to be queried. Otherwise the entire model area is requested.\n"
         "<--start>\t\tStart date. Default: 2003-01-01.\n"
         "<--end>\t\t\tStart date. Default: 2003-01-01.\n"
+        "<-t|--daily_tables>\tbuild daily tables? Default: false\n"
+        "<-s|--climatology>\tbuild climatology? Default: false\n\n"
         "<-a|--authentication>\toptional...\n");
 }
 
