@@ -151,7 +151,7 @@ struct BOUNDING_BOX parse_coordinate_file(char *coordinate_file, double **lon, d
 
     return (struct BOUNDING_BOX) {
         .area_subset = 1,
-        .north = (int) _north > 90.0 ? 90.0 : _north , .east = (int) _east > 180.0 ? 180.0 : _east,
+        .north = (int) _north > 90.0 ? 90.0 : _north, .east = (int) _east > 180.0 ? 180.0 : _east,
         .south = (int) _south < -90.0 ? -90.0 : _south, .west = (int) _west < -180.0 ? -180.0 : _west
     };
 }
@@ -406,39 +406,68 @@ const char *time_as_string(SENSING_TIME time) {
     }
 }
 
-// TODO use jansson instead of string gluing?
 const char *assemble_request(const struct PRODUCT_REQUEST *request) {
-    char *req = calloc(NPOW12, sizeof(char));
-    if (req == NULL) {
-         fprintf(stderr, "Error: Failed to allocate memory for request string.\n");
-         exit(EXIT_FAILURE);
+    json_t *json_request;
+
+    if ((json_request = json_object()) == NULL) {
+        fprintf(stderr, "ERROR: Failed to initialize JSON object in request\n");
+        exit(EXIT_FAILURE);
     }
 
-    // TODO good practice is to check return values!
-    char start_d[NPOW4], end_d[NPOW4];
-    strftime(start_d, NPOW4, "%F", &request->dates.start);
-    strftime(end_d, NPOW4, "%F", &request->dates.end);
+    if (json_object_set_new(json_request, "variable", json_string(request->variable))) {
+        fprintf(stderr, "ERROR: Failed to set 'variable' key in request\n");
+        exit(EXIT_FAILURE);
+    }
 
-    const char *sensing_time = time_as_string(request->time);
+    // could also rather easily be an array
+    if (json_object_set_new(json_request, "time", json_string(time_as_string(request->time)))) {
+        fprintf(stderr, "ERROR: Failed to set 'time' key in request\n");
+        exit(EXIT_FAILURE);
+    }
 
-    char area[NPOW6] = {0};
+    char start_d[NPOW4], end_d[NPOW4], dates[NPOW6];
+    if (strftime(start_d, NPOW4, "%F", &request->dates.start) == 0) {
+        fprintf(stderr, "ERROR: Failed to write string-formatted date into buffer for product request\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (strftime(end_d, NPOW4, "%F", &request->dates.end) == 0) {
+        fprintf(stderr, "ERROR: Failed to write string-formatted date into buffer for product request\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (snprintf(dates, NPOW6, "%s/%s", start_d, end_d) >= NPOW6) {
+        fprintf(stderr, "ERROR: Failed to concatenate dates for request\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (json_object_set_new(json_request, "date", json_string(dates))) {
+        fprintf(stderr, "ERROR: Failed to set 'date' key in request\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (json_object_set_new(json_request, "format", json_string(request->format))) {
+        fprintf(stderr, "ERROR: Failed to set 'format' key in request\n");
+        exit(EXIT_FAILURE);
+    }
+
     if (request->bbox.area_subset) {
-        // TODO check return value of snprintf!
-        snprintf(area, NPOW6, ", area: [%d, %d, %d, %d]",
-                 request->bbox.north,
-                 request->bbox.west,
-                 request->bbox.south,
-                 request->bbox.east);
+        if (json_object_set_new(json_request, "area",
+                                json_pack("[iiii]", request->bbox.north, request->bbox.west, request->bbox.south,
+                                          request->bbox.east))) {
+            fprintf(stderr, "ERROR: Failed to set 'area' key in request\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
-    // TODO check return value of snprintf!
-    snprintf(req, NPOW12, "{'variable': '%s', 'date': '%s/%s', 'time': '%s', 'format': '%s'%s}",
-             request->variable,
-             start_d,
-             end_d,
-             sensing_time,
-             request->format,
-             area);
+    char *req = json_dumps(json_request, JSON_COMPACT | JSON_ENSURE_ASCII | JSON_SORT_KEYS);
+
+    if (req == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for request string.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    json_decref(json_request);
 
     return req;
 }
@@ -451,18 +480,24 @@ const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const 
         exit(EXIT_FAILURE);
     }
 
-    // TODO good practice would be to check return values!
     char start_d[NPOW4], end_d[NPOW4];
-    strftime(start_d, NPOW4, "%Y%m%d", &request->dates.start);
-    strftime(end_d, NPOW4, "%Y%m%d", &request->dates.end);
 
-    // TODO check return value of snprintf!
-    snprintf(req, NPOW22, "%s%s_%s%s.%s",
-             options->output_directory,
-             request->variable,
-             start_d,
-             end_d,
-             request->format);
+    if (strftime(start_d, NPOW4, "%Y%m%d", &request->dates.start) == 0) {
+        fprintf(stderr, "ERROR: Failed to write string-formatted date into buffer for output file\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (strftime(end_d, NPOW4, "%Y%m%d", &request->dates.end) == 0) {
+        fprintf(stderr, "ERROR: Failed to write string-formatted date into buffer for output file\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (snprintf(req, NPOW22, "%s%s_%s%s.%s",
+                 options->output_directory, request->variable,
+                 start_d, end_d, request->format) >= NPOW22) {
+        fprintf(stderr, "ERROR: Failed to construct output file name\n");
+        exit(EXIT_FAILURE);
+    }
 
     return req;
 }
@@ -590,7 +625,7 @@ ads_request_product(PRODUCT_TYPE product, __attribute__((unused)) const struct P
     cleanup:
     json_decref(root);
     free(ads_retrieve_response.curl_string.data);
-    free((char *)d);
+    free((char *) d);
     curl_easy_reset(*handle);
     curl_slist_free_all(list);
 
