@@ -571,9 +571,6 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
 
     json_decref(json_request);
 
-    printf("%s\n", req);
-    abort();
-
     return req;
 }
 
