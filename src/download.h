@@ -151,8 +151,12 @@ struct PRODUCT_REQUEST {
     struct BOUNDING_BOX bbox;
     char *variable;
     struct DATE_RANGE dates;
-    SENSING_TIME time;
+    //SENSING_TIME time;
     char *format;
+    size_t time_length;
+    SENSING_TIME time[8];
+    size_t leadtime_length;
+    long leadtime_hour[120];
 };
 
 struct PRODUCT_RESPONSE {
@@ -310,11 +314,19 @@ size_t write_curl_generic(char *message, size_t size, size_t n, void *data_conta
 
 /**
  * @brief Translate a SENSING_TIME type to its string representation.
- * @param time Struct which should be translated.
+ * @param time Time which should be translated.
  * @return Pointer to string representation.
  * @author Florian Katerndahl
  */
 const char *time_as_string(SENSING_TIME time);
+
+/**
+ * @brief Translate a long value to its SENSING_TIME representation while also checking validity.
+ * @param v Long which should be translated.
+ * @return SENSING_TIME representation
+ * @author Florian Katerndahl
+ */
+SENSING_TIME long_to_time(long v);
 
 /**
  * @brief Construct a string in JSON format which can is passed onto CURL for a product POST request.

@@ -31,6 +31,8 @@ void print_usage(void) {
         "<--start>\t\tStart date. Default: 2003-01-01.\n"
         "<--end>\t\t\tStart date. Default: 2003-01-01.\n"
         "<--product>\t\tProduct type to query. Currently, only REPROCESSED and FORECAST are implemented. Default is REPROCESSED\n"
+        "<--time>\t\t\n"
+        "<--lead-time-hour>\t\n"
         "<-t|--daily_tables>\tbuild daily tables? Default: false\n"
         "<-s|--climatology>\tbuild climatology? Default: false\n\n"
         "<-a|--authentication>\toptional...\n");
@@ -414,6 +416,30 @@ const char *time_as_string(SENSING_TIME time) {
     }
 }
 
+SENSING_TIME long_to_time(long v) {
+    switch (v) {
+        case 0:
+            return SENSING_TIME_00;
+        case 3:
+            return SENSING_TIME_03;
+        case 6:
+            return SENSING_TIME_06;
+        case 9:
+            return SENSING_TIME_09;
+        case 12:
+            return SENSING_TIME_12;
+        case 15:
+            return SENSING_TIME_15;
+        case 18:
+            return SENSING_TIME_18;
+        case 21:
+            return SENSING_TIME_21;
+        default:
+            fprintf(stderr, "ERROR: Specified value for sensing time out of range. Got %ld; valid range is from 0 to 21 in steps of 3.\n", v);
+            exit(EXIT_FAILURE);
+    }
+}
+
 const char *assemble_request(const struct PRODUCT_REQUEST *request) {
     json_t *json_request;
 
@@ -427,10 +453,29 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
         exit(EXIT_FAILURE);
     }
 
-    // TODO add possibility to pass an array
-    if (json_object_set_new(json_request, "time", json_string(time_as_string(request->time)))) {
-        fprintf(stderr, "ERROR: Failed to set 'time' key in request\n");
-        exit(EXIT_FAILURE);
+    if (request->time_length == 1) {
+        if (json_object_set_new(json_request, "time", json_string(time_as_string(request->time[0])))) {
+            fprintf(stderr, "ERROR: Failed to set 'time' key in request\n");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        json_t *time_arr = json_array();
+        if (time_arr == NULL) {
+            fprintf(stderr, "ERROR: Failed to initialize JSON array in request\n");
+            exit(EXIT_FAILURE);
+        }
+
+        for (size_t i = 0; i < request->time_length; i++) {
+            if (json_array_append_new(time_arr, json_string(time_as_string(request->time[i])))) {
+                fprintf(stderr, "ERROR: Failed to append item to JSON array\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        if (json_object_set_new(json_request, "time", time_arr)) {
+            fprintf(stderr, "ERROR: Failed to set 'time' key in request\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     char start_d[NPOW4], end_d[NPOW4], dates[NPOW6];
@@ -473,10 +518,34 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
             exit(EXIT_FAILURE);
         }
 
-        // TODO make user settable with possibility to pass an array
-        if (json_object_set_new(json_request, "leadtime_hour", json_string("0"))) {
-            fprintf(stderr, "ERROR: Failed to set 'leadtime_hour' key in request\n");
-            exit(EXIT_FAILURE);
+        char lt[4];
+        int lt_status;
+
+        if (request->leadtime_length == 1) {
+            assert((lt_status = snprintf(lt, 4, "%ld", request->leadtime_hour[0])) > 0 && lt_status < 4);
+            if (json_object_set_new(json_request, "leadtime_hour", json_string(lt))) {
+                fprintf(stderr, "ERROR: Failed to set 'leadtime_hour' key in request\n");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            json_t *leadtime_arr = json_array();
+            if (leadtime_arr == NULL) {
+                fprintf(stderr, "ERROR: Failed to initialize JSON array\n");
+                exit(EXIT_FAILURE);
+            }
+
+            for (size_t i = 0; i < request->leadtime_length; i++) {
+                assert((lt_status = snprintf(lt, 4, "%ld", request->leadtime_hour[i])) > 0 && lt_status < 4);
+                if (json_array_append_new(leadtime_arr, json_string(lt))) {
+                    fprintf(stderr, "ERROR: Failed to append item to JSON array\n");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            if (json_object_set_new(json_request, "leadtime_hour", leadtime_arr)) {
+                fprintf(stderr, "ERROR: Failed to set 'leadtime_hour' key in request\n");
+                exit(EXIT_FAILURE);
+            }
         }
     }
 
@@ -488,6 +557,9 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
     }
 
     json_decref(json_request);
+
+    printf("%s\n", req);
+    abort();
 
     return req;
 }

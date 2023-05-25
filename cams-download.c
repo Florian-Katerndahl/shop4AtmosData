@@ -76,7 +76,6 @@ int main(int argc, char *argv[]) {
     request.product = PRODUCT_CAMS_REPROCESSED;
     request.variable = "total_aerosol_optical_depth_469nm";
     request.format = "grib";
-    request.time = SENSING_TIME_00;
 
     static struct option long_options[] = {
         {"help",             no_argument,       NULL, 'h'},
@@ -86,13 +85,15 @@ int main(int argc, char *argv[]) {
         {"coordinates",      required_argument, NULL, 'c'},
         {"start",            required_argument, NULL, '0'},
         {"end",              required_argument, NULL, '1'},
-        {"product",         required_argument, NULL, '2'},
+        {"product",          required_argument, NULL, '2'},
+        {"time",             required_argument, NULL, '3'},
+        {"lead-time-hour",   required_argument, NULL, '4'},
         {"output_directory", required_argument, NULL, 'o'},
         {0,                  0,                 0,    0}
     };
 
     // TODO why can I remove a letter from shortopts and still match the short version?
-    while ((optid = getopt_long_only(argc, argv, "+:hvia:c:o:012:", long_options, &option_index)) != -1) {
+    while ((optid = getopt_long_only(argc, argv, "+:hvia:c:o:012:3:4:", long_options, &option_index)) != -1) {
         switch (optid) {
             case 0: // getopt_long returns `val` if flag == NULL; otherwise 0 (in which case it stores val in flag)
                 break;
@@ -161,6 +162,57 @@ int main(int argc, char *argv[]) {
                 }
                 request.product = product_string_to_type(optarg);
                 break;
+                // TODO for cases 3 and 4, I get a buffer overflow!
+            case '3': {
+                if (optarg == 0) {
+                    // if text is present, optarg points to it; otherwise it is set to 0
+                    fprintf(stderr, "You shouldn't be able to reach this code!!\n");
+                }
+                char *c = optarg;
+                char **r = &optarg;
+                long val;
+                while (request.time_length < 9 && *c) {
+                    if (*c == '\0' || **r == '\0') break;
+                    val = strtol(c, r, 10);
+                    if (c == *r && (val == 0 || val == LONG_MIN || val == LONG_MAX)) {
+                        fprintf(stderr, "ERROR: Either no valid number given, or and under-/overflow occured while parsing\n");
+                        exit(EXIT_FAILURE);
+                    }
+                    assert(val >= 0 && val <= 21);
+                    request.time_length++;
+                    request.time[request.time_length - 1] = long_to_time(val);
+                    if (**r == '\0') break;
+                    c = ++(*r);
+                }
+                assert(request.time_length < 9);
+                //assert(all_unique(request.time, request.time_length - 1)); // TODO implement function
+            }
+                break;
+            case '4': {
+                if (optarg == 0) {
+                    // if text is present, optarg points to it; otherwise it is set to 0
+                    fprintf(stderr, "You shouldn't be able to reach this code!!\n");
+                }
+                char *c = optarg;
+                char **r = &optarg;
+                long val;
+                while (request.leadtime_length < 121 && *c) {
+                    if (*c == '\0' || **r == '\0') break;
+                    val = strtol(c, r, 10);
+                    if (c == *r && (val == 0 || val == LONG_MIN || val == LONG_MAX)) {
+                        fprintf(stderr, "ERROR: Either no valid number given, or and under-/overflow occured while parsing\n");
+                        exit(EXIT_FAILURE);
+                    }
+                    assert(val >= 0 && val <= 120);
+                    request.leadtime_length++;
+                    request.leadtime_hour[request.leadtime_length - 1] = val;
+                    if (**r == '\0') break;
+                    c = ++(*r);
+                }
+                assert(request.leadtime_length < 121); // TODO boundary check correct?
+                //assert(all_unique(request.leadtime_hour, request.leadtime_length - 1)); // TODO implement function
+            }
+                break;
             case ':':
                 fprintf(stderr, "Error: expected option for argument -%c/-%s is missing\n", optopt,
                         reverse_code_optopt(error_string, optopt));
@@ -191,6 +243,16 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error: Credential file, coordinate file or output directory either do not "
                         "exist, or are not accessible.\n");
         exit(EXIT_FAILURE);
+    }
+
+    if (request.time_length == 0) {
+        request.time[0] = SENSING_TIME_00;
+        request.time_length++;
+    }
+
+    if (request.leadtime_length == 0) {
+        request.leadtime_hour[0] = 0;
+        request.leadtime_length++;
     }
 
     if (init_api_authentication(&api_authentication, &options) != 0) {
@@ -284,7 +346,7 @@ int main(int argc, char *argv[]) {
     free(product_response.location);
     free(product_response.id);
 
-    free((char *)download_path);
+    free((char *) download_path);
 
     curl_easy_cleanup(handle);
     curl_global_cleanup();
