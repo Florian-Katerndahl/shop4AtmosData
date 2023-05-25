@@ -31,8 +31,8 @@ void print_usage(void) {
         "<--start>\t\tStart date. Default: 2003-01-01.\n"
         "<--end>\t\t\tStart date. Default: 2003-01-01.\n"
         "<--product>\t\tProduct type to query. Currently, only REPROCESSED and FORECAST are implemented. Default is REPROCESSED\n"
-        "<--time>\t\t\n"
-        "<--lead-time-hour>\t\n"
+        "<--time>\t\tModel times. Comma-separated list; valid range from 0 to 21 in steps of 3. Default: 0\n"
+        "<--lead-time-hour>\tLeadtime. Comma-separated list; valid range from 0 to 120. Default: 0\n"
         "<-t|--daily_tables>\tbuild daily tables? Default: false\n"
         "<-s|--climatology>\tbuild climatology? Default: false\n\n"
         "<-a|--authentication>\toptional...\n");
@@ -435,9 +435,22 @@ SENSING_TIME long_to_time(long v) {
         case 21:
             return SENSING_TIME_21;
         default:
-            fprintf(stderr, "ERROR: Specified value for sensing time out of range. Got %ld; valid range is from 0 to 21 in steps of 3.\n", v);
+            fprintf(stderr,
+                    "ERROR: Specified value for sensing time out of range. Got %ld; valid range is from 0 to 21 in steps of 3.\n",
+                    v);
             exit(EXIT_FAILURE);
     }
+}
+
+int all_unique(int *arr, size_t s) {
+    assert(s > 0);
+    for (size_t i = 0; i < s; i++) {
+        for (size_t j = 0; j < s; j++) {
+            if (j == i) continue;
+            if (arr[i] == arr[j]) return 0;
+        }
+    }
+    return 1;
 }
 
 const char *assemble_request(const struct PRODUCT_REQUEST *request) {
@@ -522,7 +535,7 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
         int lt_status;
 
         if (request->leadtime_length == 1) {
-            assert((lt_status = snprintf(lt, 4, "%ld", request->leadtime_hour[0])) > 0 && lt_status < 4);
+            assert((lt_status = snprintf(lt, 4, "%d", request->leadtime_hour[0])) > 0 && lt_status < 4);
             if (json_object_set_new(json_request, "leadtime_hour", json_string(lt))) {
                 fprintf(stderr, "ERROR: Failed to set 'leadtime_hour' key in request\n");
                 exit(EXIT_FAILURE);
@@ -535,7 +548,7 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
             }
 
             for (size_t i = 0; i < request->leadtime_length; i++) {
-                assert((lt_status = snprintf(lt, 4, "%ld", request->leadtime_hour[i])) > 0 && lt_status < 4);
+                assert((lt_status = snprintf(lt, 4, "%d", request->leadtime_hour[i])) > 0 && lt_status < 4);
                 if (json_array_append_new(leadtime_arr, json_string(lt))) {
                     fprintf(stderr, "ERROR: Failed to append item to JSON array\n");
                     exit(EXIT_FAILURE);

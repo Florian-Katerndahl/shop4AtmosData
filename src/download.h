@@ -156,7 +156,7 @@ struct PRODUCT_REQUEST {
     size_t time_length;
     SENSING_TIME time[8];
     size_t leadtime_length;
-    long leadtime_hour[120];
+    int leadtime_hour[120];
 };
 
 struct PRODUCT_RESPONSE {
@@ -327,6 +327,15 @@ const char *time_as_string(SENSING_TIME time);
  * @author Florian Katerndahl
  */
 SENSING_TIME long_to_time(long v);
+
+/**
+ * @brief Check if all elements in arr unique
+ * @param arr Pointer to array of ints
+ * @param s size of array
+ * @return 1 if no duplicates were found, 0 otherwise
+ * @author Florian Katerndahl
+ */
+int all_unique(int *arr, size_t s);
 
 /**
  * @brief Construct a string in JSON format which can is passed onto CURL for a product POST request.
