@@ -162,7 +162,6 @@ int main(int argc, char *argv[]) {
                 }
                 request.product = product_string_to_type(optarg);
                 break;
-                // TODO for cases 3 and 4, I get a buffer overflow!
             case '3': {
                 if (optarg == 0) {
                     // if text is present, optarg points to it; otherwise it is set to 0
@@ -175,7 +174,8 @@ int main(int argc, char *argv[]) {
                     if (*c == '\0' || **r == '\0') break;
                     val = strtol(c, r, 10);
                     if (c == *r && (val == 0 || val == LONG_MIN || val == LONG_MAX)) {
-                        fprintf(stderr, "ERROR: Either no valid number given, or and under-/overflow occured while parsing\n");
+                        fprintf(stderr,
+                                "ERROR: Either no valid number given, or and under-/overflow occured while parsing\n");
                         exit(EXIT_FAILURE);
                     }
                     assert(val >= 0 && val <= 21);
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
                     c = ++(*r);
                 }
                 assert(request.time_length < 9);
-                //assert(all_unique(request.time, request.time_length - 1)); // TODO implement function
+                assert(all_unique((int*) request.time, request.time_length));
             }
                 break;
             case '4': {
@@ -200,17 +200,18 @@ int main(int argc, char *argv[]) {
                     if (*c == '\0' || **r == '\0') break;
                     val = strtol(c, r, 10);
                     if (c == *r && (val == 0 || val == LONG_MIN || val == LONG_MAX)) {
-                        fprintf(stderr, "ERROR: Either no valid number given, or and under-/overflow occured while parsing\n");
+                        fprintf(stderr,
+                                "ERROR: Either no valid number given, or and under-/overflow occured while parsing\n");
                         exit(EXIT_FAILURE);
                     }
                     assert(val >= 0 && val <= 120);
                     request.leadtime_length++;
-                    request.leadtime_hour[request.leadtime_length - 1] = val;
+                    request.leadtime_hour[request.leadtime_length - 1] = (int) val;
                     if (**r == '\0') break;
                     c = ++(*r);
                 }
-                assert(request.leadtime_length < 121); // TODO boundary check correct?
-                //assert(all_unique(request.leadtime_hour, request.leadtime_length - 1)); // TODO implement function
+                assert(request.leadtime_length < 121);
+                assert(all_unique((int *) request.leadtime_hour, request.leadtime_length));
             }
                 break;
             case ':':
