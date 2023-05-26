@@ -299,10 +299,9 @@ ADS_STATUS check_ads_status(CURL **handle, const struct CLIENT *client) {
     json_error_t error;
     json_t *warning;
 
-    if ((url_status = snprintf(url, NPOW6, "%s/%s", client->auth.base_url, "status.json")) < 0 ||
-        url_status >= NPOW6) {
-        fprintf(stderr, "Error: Failed to create url for ADS status check.\n"
-                        "Return value of snprintf: %d\n", url_status);
+    if ((url_status = snprintf(url, NPOW6, "%s/%s", client->auth.base_url, "status.json")) >= NPOW6 ||
+        url_status < 0) {
+        fprintf(stderr, "Error: Failed to create url for ADS status check.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -492,6 +491,7 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
     }
 
     char start_d[NPOW4], end_d[NPOW4], dates[NPOW6];
+    int dates_status;
     if (strftime(start_d, NPOW4, "%F", &request->dates.start) == 0) {
         fprintf(stderr, "ERROR: Failed to write string-formatted date into buffer for product request\n");
         exit(EXIT_FAILURE);
@@ -502,7 +502,7 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
         exit(EXIT_FAILURE);
     }
 
-    if (snprintf(dates, NPOW6, "%s/%s", start_d, end_d) >= NPOW6) {
+    if ((dates_status = snprintf(dates, NPOW6, "%s/%s", start_d, end_d)) >= NPOW6 || dates_status < 0) {
         fprintf(stderr, "ERROR: Failed to concatenate dates for request\n");
         exit(EXIT_FAILURE);
     }
@@ -535,7 +535,11 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
         int lt_status;
 
         if (request->leadtime_length == 1) {
-            assert((lt_status = snprintf(lt, 4, "%d", request->leadtime_hour[0])) > 0 && lt_status < 4);
+            if ((lt_status = snprintf(lt, 4, "%d", request->leadtime_hour[0])) >= 4 || lt_status < 0) {
+                fprintf(stderr, "ERROR: Failed to convert lead time hour to string\n");
+                exit(EXIT_FAILURE);
+            }
+
             if (json_object_set_new(json_request, "leadtime_hour", json_string(lt))) {
                 fprintf(stderr, "ERROR: Failed to set 'leadtime_hour' key in request\n");
                 exit(EXIT_FAILURE);
@@ -548,7 +552,11 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
             }
 
             for (size_t i = 0; i < request->leadtime_length; i++) {
-                assert((lt_status = snprintf(lt, 4, "%d", request->leadtime_hour[i])) > 0 && lt_status < 4);
+                if ((lt_status = snprintf(lt, 4, "%d", request->leadtime_hour[i])) >= 4 || lt_status < 0) {
+                    fprintf(stderr, "ERROR: Failed to convert lead time hour to string\n");
+                    exit(EXIT_FAILURE);
+                }
+
                 if (json_array_append_new(leadtime_arr, json_string(lt))) {
                     fprintf(stderr, "ERROR: Failed to append item to JSON array\n");
                     exit(EXIT_FAILURE);
@@ -576,6 +584,7 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
 
 const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const struct OPTIONS *options) {
     char *req = calloc(NPOW22, sizeof(char));
+    int req_status;
 
     if (req == NULL) {
         fprintf(stderr, "Error: Failed to allocate memory for download path string.\n");
@@ -594,9 +603,9 @@ const char *assemble_download_path(const struct PRODUCT_REQUEST *request, const 
         exit(EXIT_FAILURE);
     }
 
-    if (snprintf(req, NPOW22, "%s%s_%s%s.%s",
+    if ((req_status = snprintf(req, NPOW22, "%s%s_%s%s.%s",
                  options->output_directory, request->variable,
-                 start_d, end_d, request->format) >= NPOW22) {
+                 start_d, end_d, request->format)) >= NPOW22 || req_status < 0) {
         fprintf(stderr, "ERROR: Failed to construct output file name\n");
         exit(EXIT_FAILURE);
     }
@@ -629,8 +638,8 @@ ads_request_product(const struct PRODUCT_REQUEST *request, CURL **handle, const 
             break;
     }
 
-    if ((url_status = snprintf(url, NPOW12, "%s/resources/%s", client->auth.base_url, product_name)) < 0 ||
-        url_status >= NPOW12) {
+    if ((url_status = snprintf(url, NPOW12, "%s/resources/%s", client->auth.base_url, product_name)) >= NPOW12 ||
+        url_status < 0) {
         fprintf(stderr, "Error: Failed to assemble request url\n");
         exit(EXIT_FAILURE);
     }
@@ -792,8 +801,8 @@ void ads_check_product_state(struct PRODUCT_RESPONSE *response, CURL **handle, s
     char url[NPOW8];
     int url_status;
 
-    if ((url_status = snprintf(url, NPOW8, "%s/tasks/%s", client->auth.base_url, response->id)) < 0 ||
-        url_status >= NPOW8) {
+    if ((url_status = snprintf(url, NPOW8, "%s/tasks/%s", client->auth.base_url, response->id)) >= NPOW8 ||
+        url_status < 0) {
         fprintf(stderr, "Error: Failed to assemble request url\n");
         exit(EXIT_FAILURE);
     }
@@ -874,8 +883,8 @@ int ads_delete_product_request(struct PRODUCT_RESPONSE *response, CURL **handle,
     char url[NPOW8];
     int url_status;
 
-    if ((url_status = snprintf(url, NPOW8, "%s/tasks/%s", client->auth.base_url, response->id)) < 0 ||
-        url_status >= NPOW8) {
+    if ((url_status = snprintf(url, NPOW8, "%s/tasks/%s", client->auth.base_url, response->id)) >= NPOW8 ||
+        url_status < 0) {
         fprintf(stderr, "Error: Failed to assemble URL to delete product from ADS.\n");
         exit(EXIT_FAILURE);
     }
