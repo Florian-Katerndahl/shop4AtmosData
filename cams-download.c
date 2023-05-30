@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
                                 "ERROR: Either no valid number given, or and under-/overflow occured while parsing\n");
                         exit(EXIT_FAILURE);
                     }
-                    assert(val >= 0 && val <= 21);
+                    assert(val >= 0 && val <= 21 && (val % 3) == 0);
                     request.time_length++;
                     request.time[request.time_length - 1] = long_to_time(val);
                     if (**r == '\0') break;
