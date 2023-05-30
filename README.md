@@ -38,20 +38,23 @@ Alternatively, the path to such a file can be specified at runtime via the argum
 ## Usage
 
 ```shell
-Usage: cams-download [-h|--help] [-v|--version] [-i|--purpose] [-c|--coordinates] [-o|--output_directory] [-t|--daily_tables] [-s|--climatology] <--start> <--end> <-a|--authentication>
+Usage: cams-download [-h|--help] [-v|--version] [-i|--purpose] [-o|--output_directory] <-c|--coordinates> <--start> <--end> <-t|--daily_tables> <-s|--climatology> <-a|--authentication>
 
 [-h|--help]             print this help page and exit
 [-v|--version]          print version
 [-i|--purpose]          show program's purpose
 
-[-c|--coordinates]      ...
 [-o|--output_directory] ...
-[-t|--daily_tables]     build daily tables? Default: false
-[-s|--climatology]      build climatology? Default: false
-
 Optional arguments:
+<-c|--coordinates>      Path to file with WRS2 center coordinates, if subset of area is to be queried. Otherwise the entire model area is requested.
 <--start>               Start date. Default: 2003-01-01.
 <--end>                 Start date. Default: 2003-01-01.
+<--product>             Product type to query. Currently, only REPROCESSED and FORECAST are implemented. Default is REPROCESSED
+<--time>                Model times. Comma-separated list; valid range from 0 to 21 in steps of 3. Default: 0
+<--lead-time-hour>      Leadtime. Comma-separated list; valid range from 0 to 120. Default: 0
+<-t|--daily_tables>     build daily tables? Default: false
+<-s|--climatology>      build climatology? Default: false
+
 <-a|--authentication>   optional...
 ```
 
