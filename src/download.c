@@ -526,6 +526,8 @@ const char *assemble_request(const struct PRODUCT_REQUEST *request) {
     }
 
     if (request->product == PRODUCT_CAMS_COMPOSITION_FORECAST) {
+        assert(request->time_length == 1 && request->time[0] == SENSING_TIME_00);
+
         if (json_object_set_new(json_request, "type", json_string("forecast"))) {
             fprintf(stderr, "ERROR: Failed to set key 'type' key in request\n");
             exit(EXIT_FAILURE);
