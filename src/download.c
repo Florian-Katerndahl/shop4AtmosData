@@ -24,8 +24,8 @@ void print_usage(void) {
         "[-o|--output_directory] <-c|--coordinates> <--start> <--end> <-t|--daily_tables> <-s|--climatology> <-a|--authentication>\n\n"
         "[-h|--help]\t\tprint this help page and exit\n"
         "[-v|--version]\t\tprint version\n"
-        "[-i|--purpose]\t\tshow program's purpose\n\n"
-        "[-o|--output_directory]\t...\n"
+        "[-i|--purpose]\t\tshow program's purpose\n"
+        "[-o|--output_directory]\t...\n\n"
         "Optional arguments:\n"
         "<-c|--coordinates>\tPath to file with WRS2 center coordinates, if subset of area is to be queried. Otherwise the entire model area is requested.\n"
         "<--start>\t\tStart date. Default: 2003-01-01.\n"
@@ -34,7 +34,7 @@ void print_usage(void) {
         "<--time>\t\tModel times. Comma-separated list; valid range from 0 to 21 in steps of 3. Default: 0\n"
         "<--lead-time-hour>\tLeadtime. Comma-separated list; valid range from 0 to 120. Default: 0\n"
         "<-t|--daily_tables>\tbuild daily tables? Default: false\n"
-        "<-s|--climatology>\tbuild climatology? Default: false\n\n"
+        "<-s|--climatology>\tbuild climatology? Default: false\n"
         "<-a|--authentication>\toptional...\n");
 }
 
